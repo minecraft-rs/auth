@@ -4,7 +4,7 @@ Xbox live authentication flow for Minecraft in Rust.
 
 ## Why?
 
-In order to create tools for Minecraft based on rust that implement the user profile it is necessary to first authenticate the user through Microsoft servers. With this library you can do it in just 3 lines of code.
+In order to create tools for Minecraft based on rust that implement the user profile it is necessary to first authenticate the user through Microsoft servers. With this library you can do it in just 5 lines of code.
 
 ## Prepare
 
@@ -23,15 +23,20 @@ use mc_auth::AuthFlow;
 
 fn main() {
     let mut auth = AuthFlow::new("9c1f1f43-58d5-4b7a-af0d-4e487f073441");
-    let data = auth.request_code().unwrap();
+    let code_res = auth.request_code().unwrap();
 
     println!(
-        "Open link {} and type code {}\nWaiting authentication...",
-        data.verification_uri, data.user_code
+        "Open this link in your browser {} and enter the following code: {}\nWaiting authentication...",
+        code_res.verification_uri, code_res.user_code
     );
 
-    let response = auth.wait_for_login().unwrap();
-    println!("Access token: {}", response.access_token);
+    auth.wait_for_login().unwrap();
+    auth.login_in_xbox_live().unwrap();
+
+    let minecraft = auth.login_in_minecraft().unwrap();
+    println!("Logged in:");
+    println!("Bearer token: {}", minecraft.access_token);
+    println!("UUID: {}", minecraft.username);
 }
 ```
 
