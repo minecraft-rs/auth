@@ -10,7 +10,7 @@ In order to create tools for Minecraft based on rust that implement the user pro
 
 You must first have an account in Azure and then register an application in Azure Active Directory.  
 
-1. Go to [https://portal.azure.com/](Azure Portal) and register or log in.
+1. Go to [Portal Code](https://portal.azure.com/) and register or log in.
 2. Once in your account, go to the "Azure Active Directory" service.
 3. On the service page go to the application registration section in the sidebar.
 4. Create a new application, name it whatever you want and copy the Client ID. You will need it to use this library.
