@@ -27,19 +27,19 @@ pub struct AuthTokenResponse {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct XboxLiveAuthResponse {
-    issue_instant: String,
-    not_after: String,
-    token: String,
-    display_claims: HashMap<String, Vec<HashMap<String, String>>>,
+    pub issue_instant: String,
+    pub not_after: String,
+    pub token: String,
+    pub display_claims: HashMap<String, Vec<HashMap<String, String>>>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct MinecraftAuthResponse {
-    username: String,
-    roles: Vec<String>,
-    access_token: String,
-    expires_in: u32,
-    token_type: String,
+    pub username: String,
+    pub roles: Vec<String>,
+    pub access_token: String,
+    pub expires_in: u32,
+    pub token_type: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -49,11 +49,11 @@ struct AuthError {
 
 // #[derive(Clone)]
 pub struct AuthFlow {
-    pub auth_code_res: Option<AuthCodeResponse>,
-    pub auth_token_res: Option<AuthTokenResponse>,
-    pub xbox_auth_res: Option<XboxLiveAuthResponse>,
-    pub minecraft_res: Option<MinecraftAuthResponse>,
-    pub client_id: String,
+    auth_code_res: Option<AuthCodeResponse>,
+    auth_token_res: Option<AuthTokenResponse>,
+    xbox_auth_res: Option<XboxLiveAuthResponse>,
+    minecraft_res: Option<MinecraftAuthResponse>,
+    client_id: String,
 
     client: Client,
 }
