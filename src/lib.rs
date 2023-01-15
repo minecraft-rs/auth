@@ -1,8 +1,8 @@
-use anyhow::bail;
 use reqwest::{blocking::Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
+use thiserror::Error;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AuthCodeResponse {
@@ -42,12 +42,26 @@ pub struct MinecraftAuthResponse {
     pub token_type: String,
 }
 
+#[derive(Error, Debug)]
+pub enum AuthServiceError {
+    #[error("The access token is invalid or was expired.")]
+    InvalidAccessToken,
+
+    #[error("An unexpected error has ocurred.")]
+    UnknownError,
+
+    #[error("{0}")]
+    Request(#[from] reqwest::Error),
+
+    #[error("{0}")]
+    Json(#[from] serde_json::Error),
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct AuthError {
+struct AuthServiceErrorMessage {
     error: String,
 }
 
-// #[derive(Clone)]
 pub struct AuthFlow {
     auth_code_res: Option<AuthCodeResponse>,
     auth_token_res: Option<AuthTokenResponse>,
@@ -71,7 +85,7 @@ impl AuthFlow {
         }
     }
 
-    pub fn request_code(&mut self) -> Option<&AuthCodeResponse> {
+    pub fn request_code(&mut self) -> Result<&AuthCodeResponse, AuthServiceError> {
         let client_id = &self.client_id;
 
         let response = self
@@ -81,15 +95,14 @@ impl AuthFlow {
                 ("client_id", client_id),
                 ("scope", &"XboxLive.signin offline_access".to_string()),
             ])
-            .send()
-            .unwrap();
+            .send()?;
 
-        let data: AuthCodeResponse = serde_json::from_reader(response).unwrap();
+        let data: AuthCodeResponse = serde_json::from_reader(response)?;
         self.auth_code_res = Some(data);
-        return self.auth_code_res.as_ref();
+        return Ok(self.auth_code_res.as_ref().unwrap());
     }
 
-    pub fn wait_for_login(&mut self) -> anyhow::Result<&AuthTokenResponse> {
+    pub fn wait_for_login(&mut self) -> Result<&AuthTokenResponse, AuthServiceError> {
         let auth_code = self.auth_code_res.as_ref().unwrap();
         let client_id = &self.client_id;
 
@@ -108,21 +121,20 @@ impl AuthFlow {
                     ),
                     ("device_code", &auth_code.device_code),
                 ])
-                .send()
-                .unwrap();
+                .send()?;
 
             match code_resp.status() {
                 StatusCode::BAD_REQUEST => {
-                    let error: AuthError = serde_json::from_reader(code_resp)?;
+                    let error: AuthServiceErrorMessage = serde_json::from_reader(code_resp)?;
                     match &error.error as &str {
                         "authorization_declined" => {
-                            bail!("{}", error.error)
+                            return Err(AuthServiceError::InvalidAccessToken);
                         }
                         "expired_token" => {
-                            bail!("{}", error.error)
+                            return Err(AuthServiceError::InvalidAccessToken);
                         }
                         "invalid_grant" => {
-                            bail!("{}", error.error)
+                            return Err(AuthServiceError::InvalidAccessToken);
                         }
                         _ => {
                             continue;
@@ -136,16 +148,13 @@ impl AuthFlow {
                     return Ok(self.auth_token_res.as_ref().unwrap());
                 }
                 _ => {
-                    return Err(anyhow::Error::msg(format!(
-                        "unexpected response code: {}",
-                        code_resp.status().as_str()
-                    )))
+                    return Err(AuthServiceError::UnknownError);
                 }
             }
         }
     }
 
-    pub fn login_in_xbox_live(&mut self) -> Option<&XboxLiveAuthResponse> {
+    pub fn login_in_xbox_live(&mut self) -> Result<&XboxLiveAuthResponse, AuthServiceError> {
         let auth_token = self.auth_token_res.as_ref().unwrap();
 
         let xbox_authenticate_json = json!({
@@ -162,16 +171,14 @@ impl AuthFlow {
             .client
             .post("https://user.auth.xboxlive.com/user/authenticate")
             .json(&xbox_authenticate_json)
-            .send()
-            .unwrap()
-            .json()
-            .unwrap();
+            .send()?
+            .json()?;
 
         self.xbox_auth_res = Some(xbox_res);
-        return self.xbox_auth_res.as_ref();
+        return Ok(self.xbox_auth_res.as_ref().unwrap());
     }
 
-    pub fn login_in_minecraft(&mut self) -> Option<&MinecraftAuthResponse> {
+    pub fn login_in_minecraft(&mut self) -> Result<&MinecraftAuthResponse, AuthServiceError> {
         let xbox_res = self.xbox_auth_res.as_ref().unwrap();
         let xbox_token = &xbox_res.token;
         let user_hash = &xbox_res.display_claims["xui"][0]["uhs"];
@@ -187,10 +194,8 @@ impl AuthFlow {
                 "RelyingParty": "rp://api.minecraftservices.com/",
                 "TokenType": "JWT"
             }))
-            .send()
-            .unwrap()
-            .json()
-            .unwrap();
+            .send()?
+            .json()?;
 
         let xbox_security_token = &xbox_security_token_res.token;
 
@@ -205,12 +210,10 @@ impl AuthFlow {
                         xsts_token = xbox_security_token
                     )
             }))
-            .send()
-            .unwrap()
-            .json()
-            .unwrap();
+            .send()?
+            .json()?;
 
         self.minecraft_res = Some(minecraft_resp);
-        return self.minecraft_res.as_ref();
+        return Ok(self.minecraft_res.as_ref().unwrap());
     }
 }

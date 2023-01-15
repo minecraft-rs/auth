@@ -1,7 +1,7 @@
 use mc_auth::AuthFlow;
 
 fn main() {
-    let mut auth = AuthFlow::new("9c1f1f43-58d5-4b7a-af0d-4e487f073441");
+    let mut auth = AuthFlow::new("{app client id}");
     let code_res = auth.request_code().unwrap();
 
     println!(
