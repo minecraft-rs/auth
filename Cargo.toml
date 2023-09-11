@@ -2,6 +2,10 @@
 name = "mc_auth"
 version = "0.1.0"
 edition = "2021"
+description = "A simple library for authenticating with Mojang's authentication servers."
+license = "MIT"
+repository = "https://github.com/minecraft-rs/auth"
+include = ["/src", "/examples"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
